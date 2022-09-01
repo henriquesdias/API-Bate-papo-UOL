@@ -5,7 +5,7 @@
 /front-bate-papo-uol
 /.pnp
 .pnp.js
-
+.env
 # testing
 /coverage
 
