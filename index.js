@@ -7,19 +7,42 @@ dotenv.config();
 const server = express();
 server.use(express.json());
 server.use(cors());
-
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
 mongoClient.connect().then(() => {
   db = mongoClient.db("API-bate-papo");
 });
 
-server.post("/participants", (req, res) => {
+server.post("/participants", async (req, res) => {
   const { name } = req.body;
-  //{name: name, lastStatus: Date.now()}
+  if (name === "") {
+    return res.sendStatus(422);
+  }
+  try {
+    const participants = await db
+      .collection("participants")
+      .find({ name: name })
+      .toArray();
+    if (participants.length !== 0) {
+      return res.status(409).send("Usuário já cadastrado");
+    } else {
+      db.collection("participants").insertOne({
+        name: name,
+        lastStatus: Date.now(),
+      });
+      return res.sendStatus(201);
+    }
+  } catch (error) {
+    console.log(error);
+  }
 });
-server.get("/participants", (req, res) => {
-  //retornar lista de participantes
+server.get("/participants", async (req, res) => {
+  try {
+    const participants = await db.collection("participants").find().toArray();
+    res.send(participants);
+  } catch (error) {
+    console.log(error);
+  }
 });
 server.post("/messages", (req, res) => {
   const { to, text, type } = req.body;
