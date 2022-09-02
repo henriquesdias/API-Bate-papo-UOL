@@ -68,8 +68,9 @@ server.get("/participants", async (req, res) => {
 server.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
   const { user } = req.headers;
+  const validationUser = participantSchema.validate({ name: user });
   const validation = messageSchema.validate({ to, text, type });
-  if (validation.error) {
+  if (validation.error || validationUser.error) {
     return res.sendStatus(422);
   }
   try {
@@ -92,13 +93,29 @@ server.post("/messages", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
 server.get("/messages", async (req, res) => {
   const limit = req.query.limit;
   const { user } = req.headers;
+  const validationUser = participantSchema.validate({ name: user });
+  if (validationUser.error) {
+    return res.sendStatus(422);
+  }
   try {
     const messages = await db.collection("messages").find().toArray();
     if (limit) {
-      return res.send(messages.filter((e, index) => index < Number(limit)));
+      return res.send(
+        messages
+          .filter((e, index) => index < limit)
+          .filter(
+            (e) =>
+              e.to === "Todos" ||
+              e.type === "message" ||
+              e.type === "status" ||
+              (e.type === "private_message" &&
+                (e.to === user || e.from === user))
+          )
+      );
     }
     res.send(messages);
   } catch (error) {
