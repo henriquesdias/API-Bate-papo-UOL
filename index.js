@@ -23,7 +23,7 @@ const participantSchema = joi.object({
 const messageSchema = joi.object({
   to: joi.string().required(),
   text: joi.string().required(),
-  type: joi.string().required(),
+  type: joi.string().required().only().allow("message", "private_message"),
 });
 server.post("/participants", async (req, res) => {
   const { name } = req.body;
@@ -101,9 +101,22 @@ server.get("/messages", async (req, res) => {
       return res.send(messages.filter((e, index) => index < Number(limit)));
     }
     res.send(messages);
-  } catch (error) {}
+  } catch (error) {
+    res.sendStatus(500);
+  }
 });
-server.post("/status", (req, res) => {
+server.post("/status", async (req, res) => {
   const { user } = req.headers;
+  try {
+    const participants = db
+      .collection("participants")
+      .find({ name: user })
+      .toArray();
+    if (participants.length === 0) {
+      return res.status(404).send("Usuário não encontrado");
+    }
+  } catch (error) {
+    res.sendStatus(500);
+  }
 });
 server.listen(5000, () => console.log("Listening on  port 5000"));
