@@ -92,9 +92,16 @@ server.post("/messages", async (req, res) => {
     res.sendStatus(500);
   }
 });
-server.get("/messages", (req, res) => {
+server.get("/messages", async (req, res) => {
   const limit = req.query.limit;
   const { user } = req.headers;
+  try {
+    const messages = await db.collection("messages").find().toArray();
+    if (limit) {
+      return res.send(messages.filter((e, index) => index < Number(limit)));
+    }
+    res.send(messages);
+  } catch (error) {}
 });
 server.post("/status", (req, res) => {
   const { user } = req.headers;
