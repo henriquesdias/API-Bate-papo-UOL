@@ -117,7 +117,15 @@ server.get("/messages", async (req, res) => {
           )
       );
     }
-    res.send(messages);
+    res.send(
+      messages.filter(
+        (e) =>
+          e.to === "Todos" ||
+          e.type === "message" ||
+          e.type === "status" ||
+          (e.type === "private_message" && (e.to === user || e.from === user))
+      )
+    );
   } catch (error) {
     res.sendStatus(500);
   }
@@ -125,13 +133,18 @@ server.get("/messages", async (req, res) => {
 server.post("/status", async (req, res) => {
   const { user } = req.headers;
   try {
-    const participants = db
+    const participants = await db
       .collection("participants")
       .find({ name: user })
       .toArray();
     if (participants.length === 0) {
       return res.status(404).send("Usuário não encontrado");
     }
+    db.collection("participants").updateOne(
+      { name: user },
+      { $set: { lastStatus: Date.now() } }
+    );
+    res.sendStatus(200);
   } catch (error) {
     res.sendStatus(500);
   }
