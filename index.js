@@ -144,9 +144,30 @@ server.post("/status", async (req, res) => {
       { name: user },
       { $set: { lastStatus: Date.now() } }
     );
+    setInterval(excludePartipant, 15000);
     res.sendStatus(200);
   } catch (error) {
     res.sendStatus(500);
   }
 });
 server.listen(5000, () => console.log("Listening on  port 5000"));
+async function excludePartipant() {
+  try {
+    const participants = await db.collection("participants").find().toArray();
+    for (let i = 0; i < participants.length; i++) {
+      const { name, lastStatus } = participants[i];
+      if ((Date.now() - lastStatus) / 1000 > 10) {
+        db.collection("messages").insertOne({
+          from: name,
+          to: "Todos",
+          text: "sai da sala...",
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
+        });
+        db.collection("participants").deleteOne({ name });
+      }
+    }
+  } catch (error) {
+    console.log(error.message);
+  }
+}
