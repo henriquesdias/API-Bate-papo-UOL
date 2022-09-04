@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import joi from "joi";
@@ -18,7 +18,7 @@ mongoClient.connect().then(() => {
 });
 
 const participantSchema = joi.object({
-  name: joi.string().required(),
+  name: joi.string().required().trim(),
 });
 const messageSchema = joi.object({
   to: joi.string().required(),
@@ -54,6 +54,7 @@ server.post("/participants", async (req, res) => {
     }
   } catch (error) {
     console.log(error);
+    res.sendStatus(500);
   }
 });
 server.get("/participants", async (req, res) => {
@@ -150,7 +151,6 @@ server.post("/status", async (req, res) => {
     res.sendStatus(500);
   }
 });
-server.listen(5000, () => console.log("Listening on  port 5000"));
 async function excludePartipant() {
   try {
     const participants = await db.collection("participants").find().toArray();
@@ -169,5 +169,23 @@ async function excludePartipant() {
     }
   } catch (error) {
     console.log(error.message);
+    res.sendStatus(500);
   }
 }
+server.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
+  const { user } = req.headers;
+  const { ID_DA_MENSAGEM } = req.params;
+  try {
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(ID_DA_MENSAGEM) });
+    if (message.from !== user) {
+      return res.sendStatus(401);
+    }
+    db.collection("messages").deleteOne({ _id: new ObjectId(ID_DA_MENSAGEM) });
+    res.sendStatus(200);
+  } catch (error) {
+    res.sendStatus(404);
+  }
+});
+server.listen(5000, () => console.log("Listening on  port 5000"));
