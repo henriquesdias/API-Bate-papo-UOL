@@ -21,8 +21,8 @@ const participantSchema = joi.object({
   name: joi.string().required().trim(),
 });
 const messageSchema = joi.object({
-  to: joi.string().required(),
-  text: joi.string().required(),
+  to: joi.string().required().trim(),
+  text: joi.string().required().trim(),
   type: joi.string().required().only().allow("message", "private_message"),
 });
 server.post("/participants", async (req, res) => {
@@ -183,6 +183,36 @@ server.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
       return res.sendStatus(401);
     }
     db.collection("messages").deleteOne({ _id: new ObjectId(ID_DA_MENSAGEM) });
+    res.sendStatus(200);
+  } catch (error) {
+    res.sendStatus(404);
+  }
+});
+server.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
+  const { to, text, type } = req.body;
+  const { user } = req.headers;
+  const { ID_DA_MENSAGEM } = req.params;
+  const validation = messageSchema.validate({ to, text, type });
+  try {
+    const participants = await db
+      .collection("participants")
+      .find({ name: user })
+      .toArray();
+    if (participants.length === 0 || validation.error) {
+      return res.sendStatus(422);
+    }
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(ID_DA_MENSAGEM) });
+    if (message.from !== user) {
+      return res.sendStatus(401);
+    }
+    db.collection("messages").updateOne(
+      {
+        _id: new ObjectId(ID_DA_MENSAGEM),
+      },
+      { $set: { to, text, type } }
+    );
     res.sendStatus(200);
   } catch (error) {
     res.sendStatus(404);
