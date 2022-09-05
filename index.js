@@ -4,6 +4,9 @@ import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import joi from "joi";
+import { strict as assert } from "assert";
+import { stripHtml } from "string-strip-html";
+
 dotenv.config();
 
 const server = express();
@@ -26,32 +29,30 @@ const messageSchema = joi.object({
   type: joi.string().required().only().allow("message", "private_message"),
 });
 server.post("/participants", async (req, res) => {
-  const { name } = req.body;
+  let name = req.body.name;
+  name = stripHtml(name).result;
   const validation = participantSchema.validate({ name });
-  if (validation.error) {
-    return res.sendStatus(422);
-  }
+  if (validation.error) return res.sendStatus(422);
   try {
     const participants = await db
       .collection("participants")
       .find({ name })
       .toArray();
     if (participants.length !== 0) {
-      return res.status(409).send("Usuário já cadastrado");
-    } else {
-      db.collection("participants").insertOne({
-        name,
-        lastStatus: Date.now(),
-      });
-      db.collection("messages").insertOne({
-        from: name,
-        to: "Todos",
-        text: "entra na sala...",
-        type: "status",
-        time: dayjs().format("HH:mm:ss"),
-      });
-      res.sendStatus(201);
+      return res.sendStatus(409);
     }
+    db.collection("participants").insertOne({
+      name,
+      lastStatus: Date.now(),
+    });
+    db.collection("messages").insertOne({
+      from: name,
+      to: "Todos",
+      text: "entra na sala...",
+      type: "status",
+      time: dayjs().format("HH:mm:ss"),
+    });
+    res.sendStatus(201);
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
@@ -67,7 +68,12 @@ server.get("/participants", async (req, res) => {
   }
 });
 server.post("/messages", async (req, res) => {
-  const { to, text, type } = req.body;
+  let to = req.body.to;
+  let text = req.body.text;
+  let type = req.body.type;
+  to = stripHtml(to).result;
+  text = stripHtml(text).result;
+  type = stripHtml(type).result;
   const { user } = req.headers;
   const validationUser = participantSchema.validate({ name: user });
   const validation = messageSchema.validate({ to, text, type });
@@ -145,12 +151,12 @@ server.post("/status", async (req, res) => {
       { name: user },
       { $set: { lastStatus: Date.now() } }
     );
-    setInterval(excludePartipant, 15000);
     res.sendStatus(200);
   } catch (error) {
     res.sendStatus(500);
   }
 });
+setInterval(excludePartipant, 15000);
 async function excludePartipant() {
   try {
     const participants = await db.collection("participants").find().toArray();
