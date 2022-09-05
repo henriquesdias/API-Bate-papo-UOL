@@ -175,7 +175,6 @@ async function excludePartipant() {
     }
   } catch (error) {
     console.log(error.message);
-    res.sendStatus(500);
   }
 }
 server.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
